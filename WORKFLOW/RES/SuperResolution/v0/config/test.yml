@@ -1,0 +1,13 @@
+GPU: [0, 1, 2, 3]
+
+VERBOSE: True
+
+MODEL:
+  MODE: 'SuperResolution'
+  SESSION: 'MPRNet'
+
+TEST:
+  BATCH_SIZE: 16
+  RESUME: '/workspace/JuneLi/bbtv/SensedealImgAlg/MODEL/RES/MPRNet/MPRNetv0/SuperResolution/20211126/best.pt'
+  TEST_PS: 128
+  TEST_DIR: '/workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/RES/SuperResolution/v0/test' # path to validation data

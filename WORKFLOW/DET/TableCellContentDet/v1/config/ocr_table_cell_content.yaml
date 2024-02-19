@@ -1,0 +1,7 @@
+train: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/TableCellContentDet/v0/images/train
+val: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/TableCellContentDet/v0/images/val
+test: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/TableCellContentDet/v0/images/val
+
+nc: 1
+
+names: ['cell_content']

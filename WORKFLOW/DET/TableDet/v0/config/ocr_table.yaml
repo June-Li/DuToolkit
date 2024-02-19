@@ -1,0 +1,7 @@
+train: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/TableDet/v0/images/train
+val: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/TableDet/v0/images/val
+test: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/TableDet/v0/images/test_web_download_pad
+
+nc: 1
+
+names: ['table']

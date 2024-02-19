@@ -1,0 +1,7 @@
+train: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/SealDet/v1/images/train
+val: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/SealDet/v1/images/val
+test: /workspace/JuneLi/bbtv/SensedealImgAlg/DATASETS/DET/SealDet/v1/images/test
+
+nc: 1
+
+names: ['Seal']
