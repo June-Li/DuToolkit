@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 # @Time    : 2020/6/15 14:29
 # @Author  : zhoujun
+import time
+
+import numpy as np
 import torch
 
 
@@ -67,4 +70,37 @@ class CTCLabelConverter(object):
                         result.append(self.character[int(index)])
                         conf.append(prob[i])
                 result_list.append(("".join(result), conf))
+        return result_list
+
+    def decode_by_tensor(self, preds, raw=False):
+        """convert text-index into text-label."""
+        # totaltime = time.time()
+        # s = time.time()
+        preds_info = preds.max(axis=2)
+        # print("max: ", time.time() - s)
+        result_list = []
+        # s = time.time()
+        indices, values = (
+            preds_info.indices.detach().cpu().numpy(),
+            preds_info.values.detach().cpu().numpy(),
+        )
+        # print("to cpu: ", time.time() - s)
+        for idx in range(preds_info.values.shape[0]):
+            word, prob = indices[idx], values[idx]
+            if raw:
+                result_list.append(("".join([self.character[i] for i in word]), prob))
+            else:
+                # s = time.time()
+                result, conf = [], []
+                # nonzero_indices = word.nonzero()
+                nonzero_indices = np.where(word > 0)[0]
+                # print("nonzero: ", time.time() - s)
+                # s = time.time()
+                for idx_1 in nonzero_indices:
+                    if not (idx_1 > 0 and word[idx_1 - 1] == word[idx_1]):
+                        result.append(self.character[word[idx_1]])
+                        conf.append(float(prob[idx_1]))
+                result_list.append(("".join(result), conf))
+                # print("search: ", time.time() - s)
+        # print("结果处理总耗时: ", time.time() - totaltime)
         return result_list

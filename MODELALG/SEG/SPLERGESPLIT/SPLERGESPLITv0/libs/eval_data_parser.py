@@ -32,7 +32,7 @@ class GenerateTFRecord:
 
     def str_to_int(self, str):
         intsarr = np.array([ord(chr) for chr in str])
-        padded_arr = np.zeros(shape=(self.max_length_of_word), dtype=np.int64)
+        padded_arr = np.zeros(shape=(self.max_length_of_word), dtype=int)
         padded_arr[: len(intsarr)] = intsarr
         return padded_arr
 
@@ -40,7 +40,7 @@ class GenerateTFRecord:
         return [int(val) for val in arr]
 
     def pad_with_zeros(self, arr, shape):
-        dummy = np.zeros(shape, dtype=np.int64)
+        dummy = np.zeros(shape, dtype=int)
         dummy[: arr.shape[0], : arr.shape[1]] = arr
         return dummy
 
@@ -58,17 +58,17 @@ class GenerateTFRecord:
         gt_matrices = [
             self.pad_with_zeros(
                 matrix, (self.num_of_max_vertices, self.num_of_max_vertices)
-            ).astype(np.int64)
+            ).astype(int)
             for matrix in gt_matrices
         ]
         pred_matrices = [
             self.pad_with_zeros(
                 matrix, (self.num_of_max_vertices, self.num_of_max_vertices)
-            ).astype(np.int64)
+            ).astype(int)
             for matrix in pred_matrices
         ]
 
-        im = im.astype(np.int64)
+        im = im.astype(int)
         img_height, img_width = im.shape
 
         words_arr = arr[:, 1].tolist()
@@ -76,14 +76,14 @@ class GenerateTFRecord:
 
         lengths_arr = self.convert_to_int(arr[:, 0])
         vertex_features = np.zeros(
-            shape=(self.num_of_max_vertices, self.num_data_dims), dtype=np.int64
+            shape=(self.num_of_max_vertices, self.num_data_dims), dtype=int
         )
         lengths_arr = np.array(lengths_arr).reshape(len(lengths_arr), -1)
         sample_out = np.array(np.concatenate((arr[:, 2:], lengths_arr), axis=1))
         vertex_features[:no_of_words, :] = sample_out
 
         vertex_text = np.zeros(
-            (self.num_of_max_vertices, self.max_length_of_word), dtype=np.int64
+            (self.num_of_max_vertices, self.max_length_of_word), dtype=int
         )
         vertex_text[:no_of_words] = np.array(list(map(self.str_to_int, words_arr)))
 
@@ -390,13 +390,11 @@ class GenerateTFRecord:
                     )
                     continue
 
-                img = np.asarray(new_im, np.int64)[:, :, 0]
+                img = np.asarray(new_im, int)[:, :, 0]
 
-                gt_matrices = [
-                    np.array(matrix, dtype=np.int64) for matrix in gt_matrices
-                ]
+                gt_matrices = [np.array(matrix, dtype=int) for matrix in gt_matrices]
                 pred_matrices = [
-                    np.array(matrix, dtype=np.int64) for matrix in pred_matrices
+                    np.array(matrix, dtype=int) for matrix in pred_matrices
                 ]
 
                 yield self.generate_tf_record(

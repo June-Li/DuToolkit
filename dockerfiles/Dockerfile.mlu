@@ -1,0 +1,45 @@
+FROM hub.sensedeal.vip/library/sdai-ocr-base:20240606
+
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+ENV PYTHONIOENCODING=utf-8
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV PIP_DEFAULT_TIMEOUT=120
+
+RUN echo 'Asia/Shanghai' >/etc/timezone && rm -rf /etc/localtime && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+RUN mkdir /Logs
+RUN mkdir /root/SensedealImgAlg
+ENV PYTHONPATH /root/SensedealImgAlg
+COPY . /root/SensedealImgAlg
+COPY pyproject.toml poetry.lock  /root/SensedealImgAlg/
+WORKDIR /root/SensedealImgAlg
+RUN pip install poetry
+RUN poetry lock && poetry install
+
+#COPY hwj_lib/mpi_wrapper /usr/local/mpi_wrapper
+#COPY hwj_lib/neuware /usr/local/neuware
+#COPY hwj_lib/openmpi /usr/local/openmpi
+#COPY hwj_lib/wheel_py310 /usr/local/wheel_py310
+
+RUN wget -q -O /root/hwj_lib.zip 'https://sdai-resource-zjk.oss-cn-zhangjiakou-internal.aliyuncs.com/hwj_lib.zip'
+RUN unzip /root/hwj_lib.zip -d /root/
+RUN cp -r /root/hwj_lib/mpi_wrapper /usr/local/
+RUN cp -r /root/hwj_lib/neuware /usr/local/
+RUN cp -r /root/hwj_lib/openmpi /usr/local/
+RUN cp -r /root/hwj_lib/wheel_py310 /usr/local/
+RUN cp -r /root/hwj_lib/*so* /usr/lib/x86_64-linux-gnu/
+RUN rm -r /root/hwj_lib*
+
+ENV PATH=/usr/local/neuware/bin:/usr/local/openmpi/bin${PATH:+:${PATH}}
+ENV LD_LIBRARY_PATH=/usr/local/mpi_wrapper/build/install/lib64:/usr/local/neuware/lib64:/usr/local/openmpi/lib
+
+RUN poetry run pip install /usr/local/wheel_py310/torch-2.1.0-cp310-cp310-linux_x86_64.whl
+RUN poetry run pip install /usr/local/wheel_py310/torch_mlu-1.20.0+torch2.1.0-cp310-cp310-linux_x86_64.whl
+RUN poetry run pip install /usr/local/wheel_py310/torchvision-0.16.0+cpu-cp310-cp310-linux_x86_64.whl
+RUN rm -r /usr/local/wheel_py310/
+
+RUN apt-get update
+RUN apt-get install --only-upgrade libstdc++6 -y
+
+CMD ["poetry", "run", "sh", "run_api.sh"]

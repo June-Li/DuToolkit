@@ -16,14 +16,17 @@ import traceback
 import numpy as np
 import torch
 import torchvision.transforms as transforms
+# import threading
+
 from MODELALG.CLS.ClsCollect.ClsCollectv0.utils import get_network
-from MODELALG.CLS.ClsCollect.ClsCollectv0.torch_utils import select_device
+# from MODELALG.CLS.ClsCollect.ClsCollectv0.torch_utils import select_device
 from WORKFLOW.CLS.TableCls.v0.utils.make_dataloader import default_loader
 import cv2
-from MODELALG.utils.common import Log
+from MODELALG.utils.common import Log, select_device
 
 
 logger = Log(__name__).get_logger()
+# lock = threading.Lock()
 
 
 class cfg_store:
@@ -34,7 +37,13 @@ class cfg_store:
 
 class Classifier:
     def __init__(
-        self, net, model_path, batch_size=4, device="0", img_size=512, half_flag=False
+        self,
+        net,
+        model_path,
+        batch_size=4,
+        device="cuda:0",
+        img_size=512,
+        half_flag=False,
     ):
         self.args = cfg_store()
         self.args.net = net
@@ -47,8 +56,12 @@ class Classifier:
         self.batch_size = batch_size
         self.device = select_device(self.device)
         self.net = get_network(self.args).to(self.device)
-        self.net = torch.nn.DataParallel(self.net)
-        self.net.load_state_dict(torch.load(self.model_path, map_location=self.device))
+        # self.net = torch.nn.DataParallel(self.net)
+        # self.net.load_state_dict(torch.load(self.model_path, map_location="cpu"))
+        state_dict = torch.load(self.model_path, map_location="cpu")
+        new_state_dict = {k.replace("module.", ""): v for k, v in state_dict.items()}
+        self.net.load_state_dict(new_state_dict)
+        self.net.to(self.device).float()
         self.net.eval()
         if self.half_flag and self.device.type != "cpu":
             self.net.half()
@@ -59,7 +72,7 @@ class Classifier:
         self.preprocess = transforms.Compose([transforms.ToTensor(), self.normalize])
         logger.info(" ···-> load model succeeded!")
 
-    def inference(self, imgs_ori):
+    def __call__(self, imgs_ori):
         """
         该接口用来分类表格是有线还是无线，0-有线和1-无线
         :param imgs_ori: opencv读取格式图片列表
@@ -68,6 +81,7 @@ class Classifier:
                 [0.999, 1.0, 0.999, 0.841, ……]
         """
         try:
+            # with lock:
             if self.half_flag and self.device.type != "cpu":
                 imgs = [
                     default_loader(img, self.preprocess, self.img_size).half()
@@ -133,7 +147,7 @@ if __name__ == "__main__":
     for image_name in image_name_list:
         image = cv2.imread(path + image_name)
         images.append(image)
-    pred_, score_ = classifier_.inference(images)
+    pred_, score_ = classifier_(images)
     for index, i in enumerate(pred_):
         out_img = images[index].copy()
         if i == 0 and score_[index] >= 0.9:

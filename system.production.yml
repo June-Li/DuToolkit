@@ -1,0 +1,96 @@
+DEVICE: 'CUDA:0'  # 可设置cpu、CUDA:0、MLU:0、NPU:0 （不支持任务部署在不同的卡）
+
+IS_OUT: False
+OUT_DIR: "/volume/test_out/temp/"
+
+HALF_FLAG: False
+
+CONCURRENT:
+  use_flag: True
+  multi_type: "threading"  # 仅支持threading
+  max_workers: 3
+
+FLASK:
+  host: "0.0.0.0"
+  port: 6000
+  debug: False
+
+TIMEOUT: 3600
+
+API_BASE: ""
+OSS_ADDRESS: ''
+
+MODEL:
+  Detector_seal:
+    model_path: "/volume/weights/Detector_seal_model.pt"
+    device: ""
+    img_size: 1280
+    conf_thres: 0.5
+    iou_thres: 0.3
+  De_seal:
+    model_path: "/volume/weights/De_seal_model.pt"
+    device: ""
+    img_size: 256
+    batch_size: 4
+  Detector_text:
+    version: 'v0'  # 可选v0和v1
+    v0_model_path: "/volume/weights/Detector_text_model.pt"
+    v1_model_path: "/volume/weights/Detector_text_model_v1.pt"
+    device: ""
+    unclip_ratio: 2.0
+  Classifier_text:
+    net: 'shufflenetv2_slim'
+    model_path: "/volume/weights/Classifier_text_model_slim.pt"
+    device: ""
+  Recognizer_text:
+    model_path: "/volume/weights/Recognizer_text_model_v1.pt"
+    device: ""
+    batch_size: 4
+  Detector_chrbox:
+    model_path: "/volume/weights/Detector_chrbox_model.pt"
+    device: ""
+    img_size: 960
+    conf_thres: 0.1
+    iou_thres: 0.3
+    batch_size: 16
+  Detector_table:
+    model_path: "/volume/weights/Detector_table_model.pt"
+    device: ""
+    img_size: 1280
+    conf_thres: 0.5
+    iou_thres: 0.3
+  Classifier_table:
+    net: 'shufflenetv2'
+    model_path: "/volume/weights/Classifier_table_model.pt"
+    device: ""
+  Detector_table_cell:
+    model_path: "/volume/weights/Detector_table_cell_model.pt"
+    device: ""
+    img_size: 1280
+    conf_thres: 0.5
+    iou_thres: 0.3
+  Detector_table_cell_content:
+    model_path: "/volume/weights/Detector_table_cell_content_model.pt"
+    device: ""
+    img_size: 1280
+    conf_thres: 0.5
+    iou_thres: 0.3
+  Splitor_table:
+    model_path: "/volume/weights/Splitor_table_model.pt"
+    device: ""
+  Detector_formula:
+    model_path: "/volume/weights/Detector_formula_model.pt"
+    device: ""
+    resized_shape: 1888
+    conf_thres: 0.25
+    batch_size: 16
+  Recognizer_formula:
+    model_path: "/volume/weights/pix2img_model/1.1/mfr-onnx"
+    device: ""
+  Detector_layout:
+    model_path: "/volume/weights/Detector_layout_model.pt"
+    device: ""
+    thr: 0.1
+  Classifier_reading:
+    model_path: "/volume/weights/layoutreader/"
+    device: ""

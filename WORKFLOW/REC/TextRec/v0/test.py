@@ -180,10 +180,10 @@ if __name__ == "__main__":
         if use_orientation_cls:
             h, w = np.shape(img)[:2]
             if h > 1.5 * w:
-                img = np.rot90(img, 1)
+                img = np.ascontiguousarray(np.rot90(img, 1), dtype=np.uint8)
             angle_list, score = text_classifier.inference([img])
             if angle_list[0] == 180 and score[0] > 0.7:
-                img = np.rot90(img, 2)
+                img = np.ascontiguousarray(np.rot90(img, 2), dtype=np.uint8)
         out = model.inference(img)
         min_edit_distance = minDistance(target_text, out[0][0][0])
         min_edit_distance_list.append(min_edit_distance)

@@ -14,14 +14,18 @@ sys.path.append(
 import numpy as np
 import torch
 import torchvision.transforms as transforms
+# import threading
+
 from MODELALG.CLS.ClsCollect.ClsCollectv0.utils import get_network
-from MODELALG.CLS.ClsCollect.ClsCollectv0.torch_utils import select_device
+# from MODELALG.CLS.ClsCollect.ClsCollectv0.torch_utils import select_device
 import cv2
+import time
 import traceback
-from MODELALG.utils.common import Log
+from MODELALG.utils.common import Log, select_device
 
 
 logger = Log(__name__).get_logger()
+# lock = threading.Lock()
 
 
 class cfg_store:
@@ -31,7 +35,9 @@ class cfg_store:
 
 
 class Classifier:
-    def __init__(self, net, model_path, batch_size=16, device="0", half_flag=False):
+    def __init__(
+        self, net, model_path, batch_size=16, device="cuda:0", half_flag=False
+    ):
         self.args = cfg_store()
         self.args.net = net
         self.args.device = device
@@ -42,7 +48,7 @@ class Classifier:
         self.batch_size = batch_size
         self.device = select_device(self.device)
         self.net = get_network(self.args).to(self.device)
-        self.net.load_state_dict(torch.load(self.model_path, map_location=self.device))
+        self.net.load_state_dict(torch.load(self.model_path, map_location="cpu"))
         self.net.eval()
         if self.half_flag and self.device.type != "cpu":
             self.net.half()
@@ -68,7 +74,7 @@ class Classifier:
         img_tensor = preprocess(image)
         return img_tensor
 
-    def inference(self, imgs_ori):
+    def __call__(self, imgs_ori):
         """
         该接口用来分类文本行的方向，0°和180°
         :param imgs_ori: opencv读取格式图片列表
@@ -76,6 +82,8 @@ class Classifier:
                 [180, 180, 0, 180, ……]
         """
         try:
+            # with lock:
+            # totaltime = time.time()
             if self.half_flag and self.device.type != "cpu":
                 imgs = [
                     self.default_loader(img, self.preprocess).half().to(self.device)
@@ -90,16 +98,32 @@ class Classifier:
             cls_out = []
             score = []
             for idx in range(0, len(imgs), self.batch_size):
+                # starttime = time.time()
                 batch_idxs = idxs[idx : min(len(imgs), idx + self.batch_size)]
                 batch_imgs = [imgs[idx_] for idx_ in batch_idxs]
                 batch_imgs = torch.stack(batch_imgs)
                 # batch_imgs = torch.from_numpy(batch_imgs)
                 # batch_imgs = batch_imgs.to(self.device)
+                # logger.info(
+                #     "*" * 20
+                #     + "数据准备耗时: {}".format(str(round(time.time() - starttime, 5)))
+                # )
                 with torch.no_grad():
+                    # starttime = time.time()
                     output = self.net(batch_imgs)
+                    # logger.info(
+                    #     "*" * 20
+                    #     + "模型推理耗时: {}".format(str(round(time.time() - starttime, 5)))
+                    # )
+                    # starttime = time.time()
+                    output = output.detach().cpu()
+                    # logger.info(
+                    #     "*" * 20
+                    #     + "to cpu耗时: {}".format(str(round(time.time() - starttime, 5)))
+                    # )
+                    # starttime = time.time()
                     _, pred = output.topk(1, 1, largest=True, sorted=True)
                     cls_out.extend(np.squeeze(pred.cpu().numpy(), axis=-1))
-
                     output_softmax = (
                         torch.nn.functional.softmax(output, dim=-1).cpu().numpy()
                     )
@@ -107,7 +131,13 @@ class Classifier:
                     score.extend(
                         [output_softmax[index_][i] for index_, i in enumerate(index)]
                     )
-
+                    # logger.info(
+                    #     "*" * 20
+                    #     + "后处理耗时: {}".format(str(round(time.time() - starttime, 5)))
+                    # )
+            # logger.info(
+            #     "*" * 20 + "文本分类总耗时: {}".format(str(round(time.time() - totaltime, 5)))
+            # )
             return list(np.multiply(np.array(cls_out), 180)), score
         except Exception as e:
             logger.error(" ···-> inference faild!!!")
@@ -129,5 +159,5 @@ if __name__ == "__main__":
     for image_name in image_name_list:
         image = cv2.imread(path + image_name)
         images.append(image)
-    pred_, score_ = classifier_.inference(images)
+    pred_, score_ = classifier_(images)
     print("predict output: ", pred_, "\n", score_)

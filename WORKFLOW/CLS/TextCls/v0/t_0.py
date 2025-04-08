@@ -10,8 +10,8 @@ for image_name in image_name_list:
     if not image_name.endswith(".jpg"):
         continue
     image = cv2.imread("/home/bbtv/datasets/Chinese_dataset/" + image_name)
-    image = np.rot90(image)
-    image = np.rot90(image)
+    image = np.ascontiguousarray(np.rot90(image), dtype=np.uint8)
+    image = np.ascontiguousarray(np.rot90(image), dtype=np.uint8)
     if count % 100 == 0:
         shutil.copy(
             "/home/bbtv/datasets/Chinese_dataset/" + image_name,

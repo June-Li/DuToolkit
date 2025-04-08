@@ -1,0 +1,1 @@
+docker build  --no-cache -t registry-jf.sensedeal.wiki:9443/library/sdai-ocr-base:20240515  .

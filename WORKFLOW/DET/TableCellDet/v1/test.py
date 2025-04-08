@@ -274,9 +274,11 @@ def test(
                             img[si], boxes=boxes, caption=path.name
                         )
                     )
-            wandb_logger.log_training_progress(
-                predn, path, names
-            ) if wandb_logger and wandb_logger.wandb_run else None
+            (
+                wandb_logger.log_training_progress(predn, path, names)
+                if wandb_logger and wandb_logger.wandb_run
+                else None
+            )
 
             # Append to pycocotools JSON dictionary
             if save_json:
@@ -288,9 +290,9 @@ def test(
                     jdict.append(
                         {
                             "image_id": image_id,
-                            "category_id": coco91class[int(p[5])]
-                            if is_coco
-                            else int(p[5]),
+                            "category_id": (
+                                coco91class[int(p[5])] if is_coco else int(p[5])
+                            ),
                             "bbox": [round(x, 3) for x in b],
                             "score": round(p[4], 5),
                         }
@@ -366,7 +368,7 @@ def test(
         ap50, ap = ap[:, 0], ap.mean(1)  # AP@0.5, AP@0.5:0.95
         mp, mr, map50, map = p.mean(), r.mean(), ap50.mean(), ap.mean()
         nt = np.bincount(
-            stats[3].astype(np.int64), minlength=nc
+            stats[3].astype(int), minlength=nc
         )  # number of targets per class
     else:
         nt = torch.zeros(1)

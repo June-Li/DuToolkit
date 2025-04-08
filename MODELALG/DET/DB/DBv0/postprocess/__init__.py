@@ -5,8 +5,14 @@
 import copy
 from .DBPostProcess import DBPostProcess
 from .DBPostProcessV1 import DBPostProcessV1
+from .DBPostProcessV3 import DBPostProcessV3
 
-support_post_process = ["DBPostProcess", "DBPostProcessV1", "DetModel"]
+support_post_process = [
+    "DBPostProcess",
+    "DBPostProcessV1",
+    "DBPostProcessV3",
+    "DetModel",
+]
 
 
 def build_post_process(config):

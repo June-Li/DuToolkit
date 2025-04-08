@@ -14,20 +14,24 @@ import traceback
 import PIL as PI
 from PIL import Image
 import torch
+# import threading
+
 from skimage import img_as_ubyte
 import torchvision.transforms.functional as TF
 from MODELALG.RES.MPRNet.MPRNetv0 import utils
 from MODELALG.RES.MPRNet.MPRNetv0.MPRNet import MPRNet
-from MODELALG.RES.MPRNet.MPRNetv0.utils.torch_utils import select_device
-from MODELALG.utils.common import Log
+
+# from MODELALG.RES.MPRNet.MPRNetv0.utils.torch_utils import select_device
+from MODELALG.utils.common import Log, select_device
 
 
 logger = Log(__name__).get_logger()
+# lock = threading.Lock()
 
 
 class De:
     def __init__(
-        self, model_path, img_size=256, batch_size=4, device="0", half_flag=False
+        self, model_path, img_size=256, batch_size=4, device="cuda:0", half_flag=False
     ):
         self.weights = model_path
         self.img_size = img_size
@@ -36,7 +40,7 @@ class De:
         self.half_flag = half_flag
         self.device = select_device(self.device)
         self.model = MPRNet()
-        utils.load_checkpoint(self.model, self.weights, map_location=self.device)
+        utils.load_checkpoint(self.model, self.weights, map_location="cpu")
         self.model.to(self.device)
         self.model.eval()
         self.half = (
@@ -46,13 +50,14 @@ class De:
             self.model.half()  # to FP16
         logger.info(" ···-> load model succeeded!")
 
-    def inference(self, imgs_ori):
+    def __call__(self, imgs_ori):
         """
         去印章模型
         :param imgs_ori: 抠出来的印章，cv的BGR格式
         :return: 去印章后的图，cv的BGR格式
         """
         try:
+            # with lock:
             imgs = []
             for img in imgs_ori:
                 img = cv2.resize(img, (self.img_size, self.img_size))
@@ -94,7 +99,7 @@ if __name__ == "__main__":
         img_list.append(cv2.imread(base_path + img_path))
 
     R = De(root_dir + "/MODEL/RES/MPRNet/MPRNetv0/DeSeal/20211122/best.pt")
-    out = R.inference(img_list)
+    out = R(img_list)
     for i, img in enumerate(out):
         cv2.imwrite(
             cur_dir + "/test_out/my_imgs_0_infer/" + img_path_list[i].split("/")[-1],

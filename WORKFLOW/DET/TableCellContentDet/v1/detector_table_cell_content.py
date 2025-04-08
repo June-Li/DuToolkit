@@ -13,6 +13,8 @@ import numpy as np
 import cv2
 import traceback
 import torch
+import threading
+
 from MODELALG.DET.YOLO.YOLOv5.models.experimental import attempt_load
 from MODELALG.DET.YOLO.YOLOv5.utils.datasets import letterbox
 from MODELALG.DET.YOLO.YOLOv5.utils.general import (
@@ -20,11 +22,13 @@ from MODELALG.DET.YOLO.YOLOv5.utils.general import (
     non_max_suppression,
     scale_coords,
 )
-from MODELALG.DET.YOLO.YOLOv5.utils.torch_utils import select_device
-from MODELALG.utils.common import Log
+
+# from MODELALG.DET.YOLO.YOLOv5.utils.torch_utils import select_device
+from MODELALG.utils.common import Log, select_device
 
 
 logger = Log(__name__).get_logger()
+lock = threading.Lock()
 
 
 class Detector:
@@ -35,7 +39,7 @@ class Detector:
         augment=False,
         conf_thres=0.5,
         iou_thres=0.5,
-        device="0",
+        device="cuda:0",
         half_flag=False,
     ):
         """
@@ -54,8 +58,9 @@ class Detector:
             self.weights = model_path
             self.device = select_device(device)
             self.model = attempt_load(
-                self.weights, map_location=self.device
+                self.weights, map_location="cpu"
             )  # load FP32 model
+            self.model.to(self.device).float()
             self.stride = self.model.stride.max()
             self.imgsz = check_img_size(img_size, s=self.stride)  # check img_size
             self.half = (
@@ -65,7 +70,7 @@ class Detector:
                 self.model.half()  # to FP16
             logger.info(" ···-> load model succeeded!")
 
-    def inference(self, img_ori):
+    def __call__(self, img_ori):
         """
         input:
             img_ori: opencv读取的图片格式;
@@ -75,49 +80,50 @@ class Detector:
              clses: [0, 0, ……]
         """
         try:
-            boxes = []
-            confes = []
-            clses = []
-            with torch.no_grad():
-                # prepare data
-                img = letterbox(
-                    img_ori, new_shape=self.imgsz, stride=self.stride.cpu().numpy()
-                )[0]
-                img = img[:, :, ::-1].transpose(2, 0, 1)
-                img = np.ascontiguousarray(img)
-                img = torch.from_numpy(img).to(self.device)
-                img = (
-                    img.half() if self.half_flag and self.half else img.float()
-                )  # uint8 to fp16/32
-                img /= 255.0  # 0 - 255 to 0.0 - 1.0
-                if img.ndimension() == 3:
-                    img = img.unsqueeze(0)
+            with lock:
+                boxes = []
+                confes = []
+                clses = []
+                with torch.no_grad():
+                    # prepare data
+                    img = letterbox(
+                        img_ori, new_shape=self.imgsz, stride=self.stride.cpu().numpy()
+                    )[0]
+                    img = img[:, :, ::-1].transpose(2, 0, 1)
+                    img = np.ascontiguousarray(img)
+                    img = torch.from_numpy(img).to(self.device)
+                    img = (
+                        img.half() if self.half_flag and self.half else img.float()
+                    )  # uint8 to fp16/32
+                    img /= 255.0  # 0 - 255 to 0.0 - 1.0
+                    if img.ndimension() == 3:
+                        img = img.unsqueeze(0)
 
-                # Inference
-                pred = self.model(img)[0]
+                    # Inference
+                    pred = self.model(img)[0]
 
-                # Apply NMS
-                pred = non_max_suppression(pred, self.conf_thres, self.iou_thres)
+                    # Apply NMS
+                    pred = non_max_suppression(pred, self.conf_thres, self.iou_thres)
 
-                # Process detections
-                for i, det in enumerate(pred):  # detections per image
-                    if len(det):
-                        det[:, :4] = scale_coords(
-                            img.shape[2:], det[:, :4], img_ori.shape
-                        ).round()
-                        for *xyxy, conf, cls in reversed(det):
-                            # boxes.append([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
-                            boxes.append(
-                                [
-                                    max(int(xyxy[0]) - 3, 0),
-                                    int(xyxy[1]),
-                                    min(int(xyxy[2]) + 3, np.shape(img_ori)[1]),
-                                    int(xyxy[3]),
-                                ]
-                            )
-                            confes.append(float(conf.cpu().numpy()))
-                            clses.append(int(cls.cpu().numpy()))
-            return boxes, confes, clses
+                    # Process detections
+                    for i, det in enumerate(pred):  # detections per image
+                        if len(det):
+                            det[:, :4] = scale_coords(
+                                img.shape[2:], det[:, :4], img_ori.shape
+                            ).round()
+                            for *xyxy, conf, cls in reversed(det):
+                                # boxes.append([int(xyxy[0]), int(xyxy[1]), int(xyxy[2]), int(xyxy[3])])
+                                boxes.append(
+                                    [
+                                        max(int(xyxy[0]) - 3, 0),
+                                        int(xyxy[1]),
+                                        min(int(xyxy[2]) + 3, np.shape(img_ori)[1]),
+                                        int(xyxy[3]),
+                                    ]
+                                )
+                                confes.append(float(conf.cpu().numpy()))
+                                clses.append(int(cls.cpu().numpy()))
+                return boxes, confes, clses
         except Exception as e:
             logger.error(" ···-> inference faild!!!")
             logger.error(traceback.format_exc())

@@ -1,0 +1,25 @@
+FROM --platform=$TARGETPLATFORM hub.sensedeal.vip/library/sdai-ocr-base:20240712
+
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+ENV PYTHONIOENCODING=utf-8
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV PIP_DEFAULT_TIMEOUT=120
+
+RUN uname -a && echo 'Asia/Shanghai' >/etc/timezone && rm -rf /etc/localtime && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+
+RUN mkdir /Logs
+RUN mkdir /root/SensedealImgAlg
+ENV PYTHONPATH=/root/SensedealImgAlg
+COPY pyproject.toml poetry.lock  /root/SensedealImgAlg/
+WORKDIR /root/SensedealImgAlg
+RUN poetry lock && poetry install -E gpu
+RUN poetry run pip install -U torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
+RUN CUDA_LIB_PATH=$(find /root/.cache/pypoetry/virtualenvs -type d -path "*/nvidia/cuda_nvrtc/lib" -print -quit) \
+    && echo "export LD_LIBRARY_PATH=\"$CUDA_LIB_PATH:\$LD_LIBRARY_PATH\"" >> /etc/profile.d/poetry_env.sh \
+    && echo "export LD_LIBRARY_PATH=\"$CUDA_LIB_PATH:\$LD_LIBRARY_PATH\"" >> /root/.bashrc
+ENV BASH_ENV=/etc/profile.d/poetry_env.sh
+
+COPY . /root/SensedealImgAlg
+
+CMD ["poetry", "run", "sh", "run_api.sh"]

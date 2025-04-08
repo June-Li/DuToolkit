@@ -3,6 +3,7 @@
 # @Author  : lijun
 import os
 import sys
+import time
 
 cur_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.join(cur_dir, "../../../../")
@@ -55,7 +56,7 @@ class Recognizer:
         self.batch_size = batch_size
         logger.info(" ···-> load model succeeded!")
 
-    def inference(self, imgs):
+    def __call__(self, imgs):
         """
         该接口用来识别文本行；
         :param imgs: opencv读取格式图片列表
@@ -65,6 +66,7 @@ class Recognizer:
         """
         try:
             # 预处理根据训练来
+            # totaltime = time.time()
             if not isinstance(imgs, list):
                 imgs = [imgs]
             imgs = [
@@ -77,6 +79,7 @@ class Recognizer:
             idxs = np.argsort(widths)
             txts = []
             for idx in range(0, len(imgs), self.batch_size):
+                # starttime = time.time()
                 batch_idxs = idxs[idx : min(len(imgs), idx + self.batch_size)]
                 batch_imgs = [
                     self.process.width_pad_img(imgs[idx], imgs[batch_idxs[-1]].shape[1])
@@ -87,18 +90,23 @@ class Recognizer:
                 tensor = tensor.to(self.device)
                 if self.half_flag and self.device.type != "cpu":
                     tensor = tensor.half()
+                # logger.info("数据准备耗时: {}".format(str(round(time.time() - starttime, 5))))
+                # starttime = time.time()
                 with torch.no_grad():
                     out = self.model(tensor)
                     out = out.softmax(dim=2)
-                out = out.cpu().numpy()
-                if self.half_flag and self.device.type != "cpu":
-                    out = out.astype(np.float32)
-                txts.extend(
-                    [self.converter.decode(np.expand_dims(txt, 0)) for txt in out]
-                )
+                # logger.info(
+                #     "模型推理耗时: {} ({})".format(
+                #         str(round(time.time() - starttime, 5)), str(tensor.shape)
+                #     )
+                # )
+                # starttime = time.time()
+                txts.extend(self.converter.decode_by_tensor(out))
+                # logger.info("结果处理耗时: {}".format(str(round(time.time() - starttime, 5))))
             # 按输入图像的顺序排序
             idxs = np.argsort(idxs)
-            out_txts = [txts[idx] for idx in idxs]
+            out_txts = [[txts[idx]] for idx in idxs]
+            # logger.info("文本识别总耗时: {}".format(str(round(time.time() - totaltime, 5))))
             return out_txts
         except Exception as e:
             logger.error(" ···-> inference faild!!!")
@@ -107,17 +115,13 @@ class Recognizer:
 
 
 if __name__ == "__main__":
-    path = cur_dir + "/test_data/my_imgs_0/"
-    model = Recognizer(
-        os.path.abspath(root_dir + "/MODEL/REC/CRNN/CRNNv0/TextRec/20210601/best.pt"),
-        device="0",
-    )
-
+    path = "/volume/test_data/my_imgs_0/"
+    model = Recognizer("/volume/weights/Recognizer_text_model.pt", device="0")
     image_name_list = os.listdir(path)
     imgs = []
     for image_name in image_name_list:
         print("processed img name: ", image_name)
         img = cv2.imread(path + image_name)
         imgs.append(img)
-    out = model.inference(imgs)
+    out = model(imgs)
     print(out)

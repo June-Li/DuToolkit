@@ -48,7 +48,7 @@ class DetMetric:
             gt_polyons_batch, pred_polygons_batch, pred_scores_batch, ignore_tags_batch
         ):
             gt = [
-                dict(points=np.int64(polygons[i]), ignore=ignore_tags[i])
+                dict(points=int(polygons[i]), ignore=ignore_tags[i])
                 for i in range(len(polygons))
             ]
             if self.is_output_polygon:
